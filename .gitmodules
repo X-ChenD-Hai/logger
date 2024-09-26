@@ -1,0 +1,3 @@
+[submodule "@cpp-ipc"]
+	path = @cpp-ipc
+	url = .\\@cpp-ipc\\
