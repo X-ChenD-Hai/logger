@@ -4,14 +4,14 @@
 namespace logger {
 
 class ServerManager {
-protected:
+   protected:
     bool __stop = false;
 
-public:
+   public:
     ServerManager();
-    ~ServerManager() {};
+    ~ServerManager(){};
 };
 
-};
+};  // namespace logger
 
-#endif // SERVER_MANAGER_H
+#endif  // SERVER_MANAGER_H

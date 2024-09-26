@@ -28,7 +28,6 @@ enum class BufferType : uint8_t {
     ROLE_LABEL_IDS,
     MSG_LABEL_IDS,
 };
-
 struct BuffHeader {
     const size_t version = BufferVersion;
     BufferType type;
@@ -54,7 +53,6 @@ struct LabelIdsBufferHeader : public BuffHeader {
 struct MsgBufferHeader : public BuffHeader {
     const size_t timestamp, level, role_id, msg_size, labels_num;
 };
-
 class Buffer {
    private:
     char* __data = nullptr;
@@ -132,7 +130,6 @@ class Buffer {
         ClientIdBufferHeader* header = (ClientIdBufferHeader*)__data;
         return {header->client_id, true};
     }
-
     std::tuple<std::string, bool> clientName() {
         if (type() != BufferType::CLIENT_NAME) return {"", false};
         ClientNameBufferHeader* header = (ClientNameBufferHeader*)__data;
@@ -229,7 +226,6 @@ class Buffer {
         __data = new char[__size];
         memcpy(__data, &header, sizeof(header));
     }
-
     Buffer(void* data, size_t size) : __data(new char[size]), __size(size) {
         memcpy(__data, data, size);
     };

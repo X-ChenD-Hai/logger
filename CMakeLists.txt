@@ -11,4 +11,3 @@ add_subdirectory(src)
 
 add_executable(logger_test test/test.cpp)
 target_link_libraries(logger_test PRIVATE ipc)
-

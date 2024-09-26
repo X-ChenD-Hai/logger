@@ -1,33 +1,30 @@
 // server.h
 #ifndef SERVER_H
 #define SERVER_H
-#include "./connection.h"
 #include <string>
+
+#include "./connection.h"
 
 namespace logger {
 class Server {
-protected:
+   protected:
     std::string __id;
     std::vector<Connection*> __conns;
 
-public:
+   public:
     inline std::string id() { return __id; };
 
     inline std::vector<Connection*> conns() { return __conns; };
 
-public:
+   public:
     Server();
     ~Server();
 };
 
-inline Server::Server()
-{
-}
+inline Server::Server() {}
 
-inline Server::~Server()
-{
-}
+inline Server::~Server() {}
 
-} // namespace logger
+}  // namespace logger
 
-#endif // SERVER_H
+#endif  // SERVER_H
