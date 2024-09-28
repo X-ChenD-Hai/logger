@@ -100,6 +100,19 @@ class Server {
     virtual void listening() = 0;
 
    public:
+    inline Connection* connection(const std::string& name) {
+        if (__conns.find(name) != __conns.end())
+            return __conns[name];
+        else
+            return nullptr;
+    }
+    inline std::vector<const Connection*> connections() const noexcept {
+        std::vector<const Connection*> list;
+        for (auto it : __conns) list.push_back(it.second);
+        return std::move(list);
+    };
+
+   public:
     Server() = delete;
     Server(const Server&) = delete;
     explicit Server(const std::string& id) : ServerId(id){};

@@ -51,19 +51,26 @@ class IpcServer : public Server {
    public:
     virtual void listening() override {
         if (cc->wait_for_recv(2, time_out)) {
-            auto buf = cc->recv();
-            auto conn = submitBuffer(Buffer(buf.data(), buf.size()), nullptr);
-            if (client_cc_list.find(conn->ClientName) == client_cc_list.end()) {
-                client_cc_list[conn->ClientName] =
-                    new ipc::channel((ServerId + "-" + conn->ClientName).data(),
-                                     ipc::receiver | ipc::sender);
+            auto buf = cc->recv(time_out);
+            if (buf.data()) {
+                auto conn =
+                    submitBuffer(Buffer(buf.data(), buf.size()), nullptr);
+                if (client_cc_list.find(conn->ClientName) ==
+                    client_cc_list.end()) {
+                    client_cc_list[conn->ClientName] = new ipc::channel(
+                        (ServerId + "-" + conn->ClientName).data(),
+                        ipc::receiver | ipc::sender);
+                }
             }
         }
         for (auto client : client_cc_list) {
             if (client.second->wait_for_recv(2, time_out)) {
-                auto buf = client.second->recv();
-                auto conn = getConnectionByName(client.first);
-                if (conn) submitBuffer(Buffer(buf.data(), buf.size()), conn);
+                auto buf = client.second->recv(time_out);
+                if (buf.data()) {
+                    auto conn = getConnectionByName(client.first);
+                    if (conn)
+                        submitBuffer(Buffer(buf.data(), buf.size()), conn);
+                }
             }
         }
         size_t batch = OnesReSendBatchSize;

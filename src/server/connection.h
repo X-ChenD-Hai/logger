@@ -71,6 +71,13 @@ class Connection {
     }
 
    public:
+    ServerRole *root() const { return __root; }
+    const std::vector<std::string> &magLabels() const { return __msg_labels; }
+    const std::vector<std::string> &roleLabels() const { return __role_labels; }
+    const std::vector<ServerRole *> &roles() const { return __roles; }
+    const std::vector<Message *> &messages() const { return __msgs; }
+
+   public:
     Connection() = delete;
     Connection(const Connection &) = delete;
 
