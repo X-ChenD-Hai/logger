@@ -6,10 +6,6 @@
 
 #include "./message.hpp"
 
-#ifdef __Debug__
-#include <iostream>
-#endif
-
 namespace logger {
 
 class Role {
@@ -43,12 +39,9 @@ class Role {
 
    public:
     virtual ~Role() {
-#ifdef __Debug__
-        std::cout << "delete role: " << __name << std::endl;
-#endif
-
-        for (auto ch : __children) {
-            delete ch.second;
+        for (auto it = __children.begin(); it != __children.end();
+             it = __children.erase(it)) {
+            delete it->second;
         }
     }
 };

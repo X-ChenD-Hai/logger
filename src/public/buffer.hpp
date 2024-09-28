@@ -1,8 +1,14 @@
 // buffer.hpp
 #ifndef BUFFER_H
 #define BUFFER_H
+#include <stdint.h>
+
+#include <cstddef>
+#include <functional>
+
 #include "./message.hpp"
 #include "role.hpp"
+
 #if defined(__WIN32__)
 #include <corecrt.h>
 #elif defined(__linux__)
@@ -60,9 +66,9 @@ class Buffer {
 
    public:
     BufferType type() { return ((BuffHeader*)__data)->type; };
-    template <class T, T* (*getParentById)(size_t)>
+    template <class T>
         requires std::is_base_of<Role, T>::value
-    T* role(RoleId id) {
+    T* role(std::function<T*(size_t)> getParentById) {
         if (type() != BufferType::ROLE) return nullptr;
         RoleBufferHeader* header = (RoleBufferHeader*)__data;
         Role* r = new T();
@@ -75,7 +81,6 @@ class Buffer {
             (size_t*)((char*)header + sizeof(logger::RoleBufferHeader) +
                       header->name_size + header->labels_num));
         r->__parent = getParentById(header->parent_id);
-        r->__id = id;
         if (r->__parent) r->__parent->__children[r->name()] = r;
         r->__timestamp = header->timestamp;
         return (T*)r;
@@ -84,7 +89,7 @@ class Buffer {
         if (type() != BufferType::MSG) return {Message{}, false};
         Message msg;
         MsgBufferHeader* header = (logger::MsgBufferHeader*)__data;
-        msg.role = header->role_id;
+        msg.role_id = header->role_id;
         msg.msg = std::string((char*)header + sizeof(logger::MsgBufferHeader),
                               header->msg_size);
         msg.level = header->level;
@@ -115,10 +120,10 @@ class Buffer {
         if (type() != BufferType::MSG_LABEL_IDS &&
             type() != BufferType::ROLE_LABEL_IDS)
             return {};
-        logger::LabelIdsBufferHeader* header =
-            (logger::LabelIdsBufferHeader*)__data;
-        return std::vector<size_t>((size_t*)(header + 1),
-                                   (size_t*)(header + 1) + header->labels_num);
+        auto header = (logger::LabelIdsBufferHeader*)__data;
+        return std::vector<size_t>(
+            (size_t*)(header + 1),
+            ((size_t*)(header + 1)) + header->labels_num);
     }
     std::tuple<RoleId, bool> roleId() {
         if (type() != BufferType::ROLE_ID) return {0, false};
@@ -145,7 +150,6 @@ class Buffer {
     Buffer(const std::string& client_name) {
         ClientNameBufferHeader header = {
             {BufferVersion, BufferType::CLIENT_NAME},
-
             client_name.size(),
         };
         __size = sizeof(ClientNameBufferHeader) + header.client_name_size;
@@ -170,12 +174,13 @@ class Buffer {
         memcpy(__data + sizeof(RoleBufferHeader) + header.name_size,
                role.labelIds().data(), header.labels_num);
     };
+
     Buffer(const Message& msg) {
         MsgBufferHeader header = {
             {BufferVersion, BufferType::MSG},
             msg.timestamp,
             msg.level,
-            msg.role,
+            msg.role_id,
             msg.msg.size(),
             msg.labelIds.size() * sizeof(size_t),
         };

@@ -6,6 +6,7 @@
 #include <iostream>
 #include <mutex>
 #include <queue>
+#include <string>
 #include <thread>
 
 #include "../public/buffer.hpp"
@@ -58,43 +59,33 @@ class IpcConnention : public Connection {
                 std::cout << "client recv timeout" << std::endl;
                 return;
             }
-            auto buff = Buffer(client->name());
+            auto buff = Buffer(client->ClientName);
             if (!cc->send(buff.data(), buff.size(), timeout_ms)) {
                 std::cout << "client send timeout" << std::endl;
                 return;
             }
-            if (!cc->wait_for_recv(2, timeout_ms)) {
-                std::cout << "client recv timeout" << std::endl;
-                return;
-            }
 
-            auto buf = cc->recv();
-            if (buf.data() == nullptr) {
-                std::cout << "client recv timeout" << std::endl;
-                return;
-            }
-
-            auto buf2 = Buffer(buf.data(), buf.size());
-            if (buf2.type() == BufferType::CLIENT_ID) {
-                auto idx = buf2.clientId();
-                if (std::get<1>(idx)) client_id = (std::get<0>(idx));
-            }
+            delete cc;
+            cc =
+                new ipc::channel((ServerName + "-" + client->ClientName).data(),
+                                 ipc::receiver | ipc::sender);
         });
         cv.notify_one();
     }
 
-    bool send(Message msg,
+    bool send(Message msg, ClientRole* role,
               const std::vector<std::string>& labels = {}) override {
         std::lock_guard<std::mutex> lk(mtx);
-        tasks.push([this, msg, labels]() mutable {
+        tasks.push([this, role, msg, labels]() mutable {
             msg.labelIds = getMsgLabelIds(labels);
-            ;
+            msg.role_id = role->id();
             auto buf = Buffer(msg);
+            std::cout << "send msg with roleid " << msg.role_id << std::endl;
             if (!cc->wait_for_recv(2, timeout_ms)) {
                 std::cout << "client recv timeout" << std::endl;
                 return;
             }
-            if (!cc->send(buf.data(), buf.size(), timeout_ms)) {
+            if (!cc->send(buf.data(), buf.size())) {
                 std::cout << "client send timeout" << std::endl;
                 return;
             }
@@ -118,7 +109,7 @@ class IpcConnention : public Connection {
                 return;
             }
             if (!cc->wait_for_recv(2, timeout_ms)) {
-                std::cout << "client recv timeout" << std::endl;
+                std::cout << "client wait for recv RoleId timeout" << std::endl;
                 return;
             }
             auto rbuf = cc->recv(timeout_ms);
@@ -142,40 +133,42 @@ class IpcConnention : public Connection {
     std::vector<size_t> getRoleLabelIds(
         std::vector<std::string> labels) override {
         std::vector<size_t> res;
-        std::vector<std::string> tmp;
+        std::vector<std::string> send_tmp;
         for (auto label : labels)
             if (role_label_map.find(label) == role_label_map.end())
-                tmp.push_back(label);
+                send_tmp.push_back(label);
             else
                 res.push_back(role_label_map[label]);
-        if (tmp.size() != 0) {
-            auto buf1 = Buffer(tmp, true);
+        if (send_tmp.size() != 0) {
             if (!cc->wait_for_recv(2, timeout_ms)) {
                 std::cout << "client recv timeout" << std::endl;
                 return res;
             }
-            if (!cc->send(buf1.data(), buf1.size(), timeout_ms)) {
+            auto buf1 = Buffer(send_tmp, true);
+            if (!cc->send(buf1.data(), buf1.size())) {
                 std::cout << "client send timeout" << std::endl;
                 return res;
             }
-            if (!cc->wait_for_recv(2, timeout_ms)) {
+            if (!cc->wait_for_recv(2)) {
                 std::cout << "client recv timeout" << std::endl;
                 return res;
             }
-            auto rbuf = cc->recv(timeout_ms);
+            auto rbuf = cc->recv();
             if (rbuf.data() == nullptr) {
                 std::cout << "client recv timeout" << std::endl;
                 return res;
             }
 
-            auto buf2 = Buffer(rbuf.data(), rbuf.size());
+            Buffer buf2(rbuf.data(), rbuf.size());
             if (buf2.type() == BufferType::ROLE_LABEL_IDS) {
-                auto res_tmp = buf2.labelIds();
-                auto c =
-                    res_tmp.size() < tmp.size() ? res_tmp.size() : tmp.size();
+                auto recv_tmp = buf2.labelIds();
+                auto c = recv_tmp.size() < send_tmp.size() ? recv_tmp.size()
+                                                           : send_tmp.size();
                 for (size_t i = 0; i < c; i++) {
-                    role_label_map[tmp[i]] = res_tmp[i];
-                    res.push_back(res_tmp[i]);
+                    role_label_map[send_tmp[i]] = recv_tmp[i];
+                    res.push_back(recv_tmp[i]);
+                    std::cout << "register label " << send_tmp[i] << "\t"
+                              << recv_tmp[i] << std::endl;
                 }
             }
         }

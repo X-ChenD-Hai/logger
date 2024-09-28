@@ -1,8 +1,10 @@
 // connection.h
 #ifndef CONNECTION_H
 #define CONNECTION_H
+#include <cstddef>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "../public/role.hpp"
 
@@ -23,10 +25,13 @@ class ServerRole : public Role {
 };
 
 class Connection {
+    friend class Server;
+
+   public:
+    const std::string ClientName;
+
    private:
     ServerRole *__root;
-    std::string __client_name;
-    size_t __client_id;
     std::vector<std::string> __role_labels;
     std::vector<std::string> __msg_labels;
     std::vector<ServerRole *> __roles;
@@ -35,34 +40,29 @@ class Connection {
     std::unordered_map<size_t, std::vector<Message *>> __label_msgs;
 
    protected:
-    size_t registerRole(const std::string &role_name, ServerRole *parent,
-                        const std::vector<size_t> &labelIds, size_t timestamp) {
-        ServerRole *role = new ServerRole();
-        role->__name = role_name;
-        role->__parent = parent;
-        role->__timestamp = timestamp;
-        role->__labelIds = labelIds;
+    size_t registerRole(ServerRole *role) {
         role->__id = __roles.size();
-        if (parent) parent->__children[role_name] = role;
+        if (role->__parent) role->__parent->__children[role->__name] = role;
         __roles.push_back(role);
-        for (auto labelId : labelIds) {
+        for (auto labelId : role->__labelIds) {
             __label_roles[labelId].push_back(role);
         }
         return role->__id;
     }
-    size_t newMsg(const Message &msg) {
+    size_t appendMsg(const Message &msg) {
         Message *m = new Message(msg);
         __msgs.push_back(m);
         for (auto labelId : msg.labelIds) {
             __label_msgs[labelId].push_back(m);
         }
-        __roles[msg.role]->msgs.push_back(m);
+        if (__roles.size() > msg.role_id)
+            if (__roles[msg.role_id]) __roles[msg.role_id]->msgs.push_back(m);
         return __msgs.size() - 1;
     }
     size_t registerRoleLabel(const std::string &label_name) {
         __label_roles[__role_labels.size()] = std::vector<ServerRole *>();
         __role_labels.push_back(label_name);
-        return __msg_labels.size() - 1;
+        return __role_labels.size() - 1;
     }
     size_t registerMsgLabel(const std::string &label_name) {
         __label_msgs[__msg_labels.size()] = std::vector<Message *>();
@@ -71,10 +71,23 @@ class Connection {
     }
 
    public:
-    Connection(const std::string &server_id);
+    Connection() = delete;
+    Connection(const Connection &) = delete;
+
+    explicit Connection(const std::string &client_name)
+        : ClientName(client_name) {
+        __roles.push_back(nullptr);
+    };
     ~Connection() {
+        std::vector<ServerRole *> tmp;
         for (auto r : __roles) {
-            if (r->__parent == nullptr) delete r;
+            if (r)
+                if (r->__parent == nullptr) {
+                    tmp.push_back(r);
+                }
+            for (auto r : tmp) {
+                delete r;
+            }
         }
     };
 };

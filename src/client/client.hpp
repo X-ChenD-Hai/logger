@@ -40,13 +40,14 @@ class Client {
                              const std::vector<Connection*>& conns);
 
    private:
-    std::string __name;
     ClientRole* __root;
     static std::vector<Connection*> __conns;
 
    public:
+    const std::string ClientName;
+
+   public:
     inline ClientRole* root() { return __root; };
-    std::string name() { return __name; };
 
    public:
     ~Client();
@@ -63,7 +64,7 @@ inline Client* getClient(const std::string& name,
 
 inline Client::Client(const std::string& name,
                       const std::vector<Connection*>& conns)
-    : __name(name) {
+    : ClientName(name) {
     __conns = conns;
     for (auto conn : conns) conn->registerClient(this);
     __root = new ClientRole("root", {}, nullptr);
@@ -101,7 +102,8 @@ inline void ClientRole::log(LogLevel level, std::string_view msg,
                             const std::vector<std::string>& labels,
                             size_t timestemp) {
     for (auto conn : Client::__conns) {
-        conn->send(Message{std::string(msg), timestemp, level, id()}, labels);
+        conn->send(Message{std::string(msg), timestemp, level, id()}, this,
+                   labels);
     }
 }
 };  // namespace logger

@@ -3,6 +3,15 @@
 #define COMMEN_H
 #include <string>
 #include <vector>
+#ifdef __Debug__
+#include <iostream>
+#define D(x)                         \
+    do {                             \
+        std::cout << x << std::endl; \
+    } while
+#else
+#define D(x)
+#endif
 
 namespace logger {
 typedef size_t LogLevel;
@@ -14,7 +23,7 @@ struct Message {
     std::string msg;
     size_t timestamp;
     LogLevel level;
-    RoleId role;
+    RoleId role_id;
     std::vector<size_t> labelIds;
 };
 

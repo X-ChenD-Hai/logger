@@ -11,6 +11,7 @@ class MyWidget(QWidget):
         layout.addWidget(self.label)
         layout.addWidget(self.button)
         self.setLayout(layout)
+        self.resize(600,400)
 
     @Slot()
     def on_button_clicked(self):
