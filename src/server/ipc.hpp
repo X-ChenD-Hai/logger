@@ -4,36 +4,48 @@
 
 #include <cstddef>
 #include <functional>
+#include <queue>
 #include <string>
 #include <unordered_map>
-#include <vector>
 
 #include "./server.h"
 #include "libipc/ipc.h"
-constexpr size_t DefaultTimeOot = 1;
 namespace logger {
+constexpr size_t DefaultTimeOut = 1;
+constexpr size_t OnesReSendBatchSize = 10;
 class IpcServer : public Server {
    private:
     std::unordered_map<std::string, ipc::channel*> client_cc_list;
-    size_t time_out = DefaultTimeOot;
-    std::vector<std::function<bool(void)>> tasks;
+    size_t time_out = DefaultTimeOut;
+    std::queue<std::function<bool(void)>> tasks;
 
     ipc::channel* cc = nullptr;
-    virtual void send(Buffer&& buf, const Connection* conn) override {
-        if (conn)
-            if (client_cc_list.find(conn->ClientName) != client_cc_list.end()) {
-                if (client_cc_list[conn->ClientName]->wait_for_recv(2,
-                                                                    time_out)) {
-                    client_cc_list[conn->ClientName]->send(buf.data(),
-                                                           buf.size());
-                }
-            } else {
-            }
-        else {
+    virtual bool send(Buffer&& buf, const Connection* conn,
+                      size_t resend_times) override {
+        if (resend_times == 0) return true;
+        if (!conn) {
             if (cc->wait_for_recv(2, time_out)) {
                 cc->send(buf.data(), buf.size());
+                return true;
+            } else {
+                tasks.push([this, buf = std::move(buf), conn,
+                            resend_times]() mutable {
+                    return this->send(std::move(buf), conn, resend_times - 1);
+                });
             }
         }
+        if (client_cc_list.find(conn->ClientName) != client_cc_list.end()) {
+            if (client_cc_list[conn->ClientName]->wait_for_recv(2, time_out)) {
+                client_cc_list[conn->ClientName]->send(buf.data(), buf.size());
+                return true;
+            } else {
+                tasks.push([this, buf = std::move(buf), conn,
+                            resend_times]() mutable {
+                    return this->send(std::move(buf), conn, resend_times - 1);
+                });
+            }
+        }
+        return false;
     }
 
    public:
@@ -53,6 +65,11 @@ class IpcServer : public Server {
                 auto conn = getConnectionByName(client.first);
                 if (conn) submitBuffer(Buffer(buf.data(), buf.size()), conn);
             }
+        }
+        size_t batch = OnesReSendBatchSize;
+        while (!--batch && !tasks.empty()) {
+            tasks.front()();
+            tasks.pop();
         }
     }
     explicit IpcServer(const std::string& id) : Server(id) {

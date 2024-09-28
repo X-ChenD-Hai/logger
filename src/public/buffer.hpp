@@ -234,7 +234,7 @@ class Buffer {
     Buffer(void* data, size_t size) : __data(new char[size]), __size(size) {
         memcpy(__data, data, size);
     };
-    Buffer(Buffer& buf) = delete;
+    Buffer(const Buffer& buf) : Buffer(buf.data(), buf.size()) {}
     Buffer(Buffer&& buf) : __data((char*)buf.__data), __size(buf.__size){};
     ~Buffer() {
         if (__data) {

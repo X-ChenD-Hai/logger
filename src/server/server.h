@@ -8,8 +8,8 @@
 
 #include "../public/buffer.hpp"
 #include "./connection.h"
-
 namespace logger {
+constexpr size_t ReSendTimes = 3;
 class Server {
    public:
     const std::string ServerId;
@@ -93,7 +93,8 @@ class Server {
         else
             return nullptr;
     }
-    virtual void send(Buffer&& buf1, const Connection* conn) = 0;
+    virtual bool send(Buffer&& buf1, const Connection* conn,
+                      size_t resend_times = ReSendTimes) = 0;
 
    public:
     virtual void listening() = 0;
