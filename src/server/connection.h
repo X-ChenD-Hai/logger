@@ -16,8 +16,9 @@ class ServerRole : public Role {
     std::vector<Message *> msgs;
 
    public:
+    std::vector<Message *> getMsgs() const { return msgs; }
     ServerRole(){};
-    virtual ~ServerRole() {
+    virtual ~ServerRole() override {
         for (auto m : msgs) {
             delete m;
         }

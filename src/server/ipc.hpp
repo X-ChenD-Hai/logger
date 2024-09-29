@@ -20,7 +20,9 @@ class IpcServer : public Server {
     std::queue<std::function<bool(void)>> tasks;
 
     ipc::channel* cc = nullptr;
-    virtual bool send(Buffer&& buf, const Connection* conn,
+
+   public:
+    virtual bool send(const Buffer& buf, const Connection* conn,
                       size_t resend_times) override {
         if (resend_times == 0) return true;
         if (!conn) {
@@ -82,7 +84,7 @@ class IpcServer : public Server {
     explicit IpcServer(const std::string& id) : Server(id) {
         cc = new ipc::channel(ServerId.data(), ipc::receiver | ipc::sender);
     }
-    virtual ~IpcServer() {
+    virtual ~IpcServer() override {
         if (cc) {
             delete cc;
             cc = nullptr;

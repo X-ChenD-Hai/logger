@@ -8,9 +8,13 @@
 
 #include "../public/buffer.hpp"
 #include "./connection.h"
+class class_;
 namespace logger {
 constexpr size_t ReSendTimes = 3;
 class Server {
+    template <typename Func, typename... Extra>
+    friend class_& def(const char* name_, Func&& f, const Extra&... extra);
+
    public:
     const std::string ServerId;
 
@@ -93,7 +97,9 @@ class Server {
         else
             return nullptr;
     }
-    virtual bool send(Buffer&& buf1, const Connection* conn,
+
+   public:
+    virtual bool send(const Buffer& buf1, const Connection* conn,
                       size_t resend_times = ReSendTimes) = 0;
 
    public:
@@ -116,7 +122,7 @@ class Server {
     Server() = delete;
     Server(const Server&) = delete;
     explicit Server(const std::string& id) : ServerId(id){};
-    ~Server() {
+    virtual ~Server() {
         for (auto it = __conns.begin(); it != __conns.end();
              it = __conns.erase(it)) {
             delete it->second;

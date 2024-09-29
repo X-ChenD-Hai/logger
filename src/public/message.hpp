@@ -25,6 +25,14 @@ struct Message {
     LogLevel level;
     RoleId role_id;
     std::vector<size_t> labelIds;
+    Message(){};
+    Message(const std::string& msg, size_t timestamp = 0, LogLevel level = 0,
+            RoleId role_id = 0, const std::vector<size_t>& labelIds = {})
+        : msg(msg),
+          timestamp(timestamp),
+          level(level),
+          role_id(role_id),
+          labelIds(labelIds){};
 };
 
 }  // namespace logger
